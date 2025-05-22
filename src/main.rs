@@ -13,9 +13,25 @@ async fn main() -> Result<()> {
         MemorySessionStore::default(),
     );
 
-    let bsky_username = env::var("BSKY_USERNAME")?;
-    let bsky_password = env::var("BSKY_PASSWORD")?;
+    // Try to get BSKY_USERNAME
+    let bsky_username = match env::var("BSKY_USERNAME") {
+        Ok(username) => username,
+        Err(e) => {
+            eprintln!("Error getting BSKY_USERNAME: {}", e);
+            return Err(anyhow::anyhow!("BSKY_USERNAME environment variable is required"));
+        }
+    };
 
+    // Try to get BSKY_PASSWORD
+    let bsky_password = match env::var("BSKY_PASSWORD") {
+        Ok(password) => password,
+        Err(e) => {
+            eprintln!("Error getting BSKY_PASSWORD: {}", e);
+            return Err(anyhow::anyhow!("BSKY_PASSWORD environment variable is required"));
+        }
+    };
+
+    println!("Attempting to login with username: {}", bsky_username);
     let _session = agent.login(bsky_username, bsky_password).await?;
 
     let did = agent.did().await.unwrap();
