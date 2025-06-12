@@ -1,0 +1,54 @@
+[package]
+name = "atrium-api"
+version = "0.25.4"
+authors = ["sugyan <sugi1982+github@gmail.com>"]
+edition.workspace = true
+rust-version.workspace = true
+description = "API library for AT Protocol (Bluesky)"
+documentation = "https://docs.rs/atrium-api"
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+
+[dependencies]
+atrium-common.workspace = true
+atrium-xrpc.workspace = true
+chrono = { workspace = true, features = ["serde"] }
+http.workspace = true
+ipld-core = { workspace = true, features = ["serde"] }
+langtag = { workspace = true, features = ["serde"] }
+regex.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_bytes.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, optional = true }
+trait-variant.workspace = true
+
+[features]
+default = ["agent", "bluesky"]
+agent = ["tokio/sync"]
+bluesky = ["namespace-appbsky", "namespace-chatbsky"]
+ozone = ["namespace-appbsky", "namespace-chatbsky", "namespace-toolsozone"]
+namespace-appbsky = []
+namespace-chatbsky = []
+namespace-toolsozone = []
+
+[dev-dependencies]
+atrium-xrpc-client.workspace = true
+futures.workspace = true
+serde_html_form.workspace = true
+serde_ipld_dagcbor.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+wasm-bindgen-test.workspace = true
+bumpalo.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

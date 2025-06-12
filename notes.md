@@ -16,3 +16,10 @@ Accordingly, I could have also mirrored only part of the network, by taking a su
   - List repos (com.atproto.sync.listRepos)
   - Get repo checkpoints (com.atproto.sync.get_repo)
   - Process repos, ignore buffered events earlier than the checkpoint's rev (timestamp)
+
+
+
+
+
+
+  # observe new DID's

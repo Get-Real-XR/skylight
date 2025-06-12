@@ -1,0 +1,32 @@
+name: API
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cargo build -p atrium-api --verbose
+          cargo build -p atrium-api --verbose --no-default-features
+          cargo build -p atrium-api --verbose --no-default-features --features agent
+          cargo build -p atrium-api --verbose --no-default-features --features bluesky
+          cargo build -p atrium-api --verbose --no-default-features --features ozone
+          cargo build -p atrium-api --verbose --all-features
+      - name: Run tests
+        run: |
+          cargo test -p atrium-api
+          cargo test -p atrium-api --lib --no-default-features
+          cargo test -p atrium-api --lib --no-default-features --features agent
+          cargo test -p atrium-api --lib --no-default-features --features bluesky
+          cargo test -p atrium-api --lib --no-default-features --features ozone
+          cargo test -p atrium-api --lib --all-features

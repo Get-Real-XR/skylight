@@ -1,0 +1,27 @@
+[package]
+name = "atrium-xrpc"
+version = "0.12.3"
+authors = ["sugyan <sugi1982+github@gmail.com>"]
+edition.workspace = true
+rust-version.workspace = true
+description = "XRPC library for AT Protocol (Bluesky)"
+documentation = "https://docs.rs/atrium-xrpc"
+readme = "README.md"
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+
+[dependencies]
+http.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_html_form.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+trait-variant.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test.workspace = true
+bumpalo.workspace = true

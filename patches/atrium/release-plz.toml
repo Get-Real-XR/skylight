@@ -1,0 +1,86 @@
+[workspace]
+publish = false
+git_release_enable = false
+git_tag_enable = false
+changelog_update = false
+
+[[package]]
+name = "atrium-common"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-crypto"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-xrpc"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-xrpc-client"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-api"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-identity"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-repo"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "atrium-oauth"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "bsky-sdk"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[[package]]
+name = "bsky-cli"
+publish = true
+git_release_enable = true
+git_tag_enable = true
+changelog_update = true
+
+[changelog]
+commit_parsers = [
+    { message = "^feat", group = "added" },
+    { message = "^changed", group = "changed" },
+    { message = "^deprecated", group = "deprecated" },
+    { message = "^fix", group = "fixed" },
+    { message = "^security", group = "security" },
+    { message = "^remove", group = "removed" },
+    { message = "^.*", group = "other" },
+]
