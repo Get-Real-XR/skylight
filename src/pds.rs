@@ -2,16 +2,13 @@ use anyhow::Result;
 use atrium_api::agent::atp_agent::{store::MemorySessionStore, CredentialSession};
 use atrium_api::agent::Agent;
 use atrium_xrpc_client::reqwest::ReqwestClient;
-use std::{collections::HashMap, num::NonZeroU32, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
-
-
 
 #[derive(Clone)]
 pub struct PdsEndpoint {
     pub url: String,
     pub agent: Arc<Agent<CredentialSession<MemorySessionStore, ReqwestClient>>>,
-    pub rate_limiter: Arc<governor::DefaultDirectRateLimiter>,
 }
 
 pub struct PdsManager {
@@ -28,9 +25,6 @@ impl PdsManager {
     pub async fn add_endpoint(&self, endpoint_url: String) -> Result<()> {
         let mut endpoints = self.endpoints.lock().await;
 
-
-
-
         if !endpoints.contains_key(&endpoint_url) {
              let session = CredentialSession::new(
      ReqwestClient::new(&endpoint_url),
@@ -39,15 +33,9 @@ impl PdsManager {
  let agent = Agent::new(session);
             let agent = Arc::new(agent);
 
-            // Per-PDS rate limiter (higher since global controls overall)
-            let rate_limiter = Arc::new(governor::RateLimiter::direct(
-                governor::Quota::per_second(NonZeroU32::new(10).unwrap()),
-            ));
-
             let pds_endpoint = PdsEndpoint {
                 url: endpoint_url.clone(),
                 agent,
-                rate_limiter,
             };
 
             endpoints.insert(endpoint_url.clone(), pds_endpoint);

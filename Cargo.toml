@@ -15,6 +15,7 @@ clap = { version = "4.5.40", features = ["derive"] }
 futures = { version = "0.3.31", features = ["alloc"] }
 governor = "0.8.0"
 http = "1.3.1"
+num_cpus = "1.17.0"
 rand = "0.9.1"
 reqwest = { version = "0.12.20", features = ["json"] }
 rs-car = "0.5.0"

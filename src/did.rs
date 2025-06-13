@@ -52,7 +52,7 @@ pub async fn resolve(client: &reqwest::Client, did: &str) -> Result<DidDocument>
 
     if !response.status().is_success() {
         if response.status() == 429 {
-            todo!("If you are seeing this, it means did resolution needs rate limiting.");
+            todo!("rate limiting necessary");
         }
         return Err(anyhow::anyhow!(
             "Failed to resolve DID: HTTP {}",

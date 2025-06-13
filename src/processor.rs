@@ -1,14 +1,14 @@
 use anyhow::Result;
 use atrium_api::{
     app::bsky::{
-        actor::profile,
-        feed::{generator, like, post, postgate, repost, threadgate},
-        graph::{block, follow, list, listblock, listitem, starterpack, verification},
-        labeler::service,
+        actor::{profile, Profile},
+        feed::{generator, like, post, postgate, repost, threadgate, Generator, Like, Post, Postgate, Repost, Threadgate},
+        graph::{block, follow, list, listblock, listitem, starterpack, verification, Block, Follow, List, Listblock, Listitem, Starterpack, Verification},
+        labeler::{service, Service},
     },
-    chat::bsky::actor::declaration,
-    com::atproto::{identity::resolve_handle, lexicon::schema, sync::get_repo},
-    types::string::{Did, Handle},
+    chat::bsky::actor::{declaration, Declaration},
+    com::atproto::{identity::resolve_handle, lexicon::{schema, Schema}, sync::get_repo},
+    types::string::{Did, Handle, RecordKey},
 };
 use atrium_repo::{Repository, blockstore::CarStore};
 use futures::TryStreamExt;
@@ -121,73 +121,99 @@ pub async fn process_repo_bytes(
     let cs = CarStore::open(reader).await?;
     let root_cid = cs.roots().next().unwrap();
 
-    let repo = Repository::open(cs, root_cid).await?;
-    let mut repo = repo;
-    let mut mst = repo.tree();
+    let mut repo = Repository::open(cs, root_cid).await?;
     let mut all_records: Vec<FullRecord> = Vec::new();
 
-    let entries: Vec<(String, atrium_repo::Cid)> = {
-        let mut entries = pin!(mst.entries());
-        let mut collected = Vec::new();
-        while let Some(entry_result) = entries.try_next().await? {
-            println!("Processing entry: {:?}", entry_result);
-            collected.push(entry_result);
+    // Process records by collection to avoid large allocations
+    let collections = [
+        "app.bsky.feed.post",
+        "app.bsky.actor.profile", 
+        "app.bsky.feed.like",
+        "app.bsky.feed.repost",
+        "app.bsky.graph.follow",
+        "app.bsky.feed.generator",
+        "app.bsky.feed.postgate",
+        "app.bsky.feed.threadgate",
+        "app.bsky.graph.block",
+        "app.bsky.graph.list",
+        "app.bsky.graph.listblock",
+        "app.bsky.graph.listitem",
+        "app.bsky.graph.starterpack",
+        "app.bsky.graph.verification",
+        "chat.bsky.actor.declaration",
+        "com.atproto.lexicon.schema",
+        "app.bsky.labeler.service",
+    ];
+
+    for &collection in &collections {
+        // First collect all keys for this collection
+        let mut keys = Vec::new();
+        {
+            let mut mst = repo.tree();
+            let mut entries = pin!(mst.entries_prefixed(collection));
+            
+            while let Some((key, _cid)) = entries.try_next().await? {
+                keys.push(key);
+            }
         }
-        collected
-    };
-
-    // Process all entries directly
-    for (key, cid) in entries {
-        if let Some(collection) = key.split('/').next() {
-            let collection = collection.to_string();
-
-            if let Some(record_data) = decode_record(&mut repo, &collection, cid).await {
-   
+        
+        // Then process the records
+        for key in keys {
+            // Extract rkey from the full path (collection/rkey -> rkey)
+            // Skip keys that don't match this exact collection (e.g., when searching for
+            // "app.bsky.graph.list" we might get "app.bsky.graph.listblock" due to prefix matching)
+            let record_key_str = match key.strip_prefix(&format!("{}/", collection)) {
+                Some(rkey) => rkey,
+                None => continue, // Skip this key if it doesn't match the exact collection
+            };
+            let record_key = RecordKey::new(record_key_str.to_string())
+                .map_err(|e| anyhow::anyhow!("invalid record key: {} - {}", record_key_str, e))?;
+            
+            if let Some(record_data) = decode_record(&mut repo, collection, record_key).await {
                 all_records.push(FullRecord {
-                    collection,
-                    key,
+                    collection: collection.to_string(),
+                    key: record_key_str.to_string(), // Store just the rkey part
                     record_data,
                 });
             } else {
-                println!("Failed to decode record: {key}");
+                println!("Failed to decode record: {record_key_str}");
             }
         }
     }
-
     Ok(all_records)
 }
-
-
 
 async fn decode_record(
     repo: &mut Repository<CarStore<BufReader<&mut Cursor<Vec<u8>>>>>,
     collection: &str,
-    cid: atrium_repo::Cid,
+    key: RecordKey,
 ) -> Option<RecordData> {
     macro_rules! try_decode {
         ($record_type:ty) => {
-            repo.get_raw_cid::<$record_type>(cid).await.ok().flatten().map(RecordData::from)
+            repo.get::<$record_type>(key.clone()).await.ok().flatten().map(RecordData::from)
         };
     }
 
+    // No clue if this is exhaustive -- HM
+    // TODO: look into better code-gen method fo this
     match collection {
-        "app.bsky.feed.post" => try_decode!(post::Record),
-        "app.bsky.actor.profile" => try_decode!(profile::Record),
-        "app.bsky.feed.like" => try_decode!(like::Record),
-        "app.bsky.feed.repost" => try_decode!(repost::Record),
-        "app.bsky.graph.follow" => try_decode!(follow::Record),
-        "app.bsky.feed.generator" => try_decode!(generator::Record),
-        "app.bsky.feed.postgate" => try_decode!(postgate::Record),
-        "app.bsky.feed.threadgate" => try_decode!(threadgate::Record),
-        "app.bsky.graph.block" => try_decode!(block::Record),
-        "app.bsky.graph.list" => try_decode!(list::Record),
-        "app.bsky.graph.listblock" => try_decode!(listblock::Record),
-        "app.bsky.graph.listitem" => try_decode!(listitem::Record),
-        "app.bsky.graph.starterpack" => try_decode!(starterpack::Record),
-        "app.bsky.graph.verification" => try_decode!(verification::Record),
-        "chat.bsky.actor.declaration" => try_decode!(declaration::Record),
-        "com.atproto.lexicon.schema" => try_decode!(schema::Record),
-        "app.bsky.labeler.service" => try_decode!(service::Record),
+        "app.bsky.feed.post" => try_decode!(Post),
+        "app.bsky.actor.profile" => try_decode!(Profile),
+        "app.bsky.feed.like" => try_decode!(Like),
+        "app.bsky.feed.repost" => try_decode!(Repost),
+        "app.bsky.graph.follow" => try_decode!(Follow),
+        "app.bsky.feed.generator" => try_decode!(Generator),
+        "app.bsky.feed.postgate" => try_decode!(Postgate),
+        "app.bsky.feed.threadgate" => try_decode!(Threadgate),
+        "app.bsky.graph.block" => try_decode!(Block),
+        "app.bsky.graph.list" => try_decode!(List),
+        "app.bsky.graph.listblock" => try_decode!(Listblock),
+        "app.bsky.graph.listitem" => try_decode!(Listitem),
+        "app.bsky.graph.starterpack" => try_decode!(Starterpack),
+        "app.bsky.graph.verification" => try_decode!(Verification),
+        "chat.bsky.actor.declaration" => try_decode!(Declaration),
+        "com.atproto.lexicon.schema" => try_decode!(Schema),
+        "app.bsky.labeler.service" => try_decode!(Service),
         _ => None,
     }
 }
@@ -217,7 +243,7 @@ impl RepoDownloader {
                     resolved_pds
                 } else {
                     panic!("PDS endpoint not available for DID: {}", did_str);
-                    "https://bsky.social".to_string()
+                    // "https://bsky.social".to_string()
                 }
             }
         };
@@ -233,8 +259,6 @@ impl RepoDownloader {
             since: None,
         };
 
-        // Rate limiting
-        pds_endpoint.rate_limiter.until_ready().await;
 
         let repo_data = pds_endpoint
             .agent
